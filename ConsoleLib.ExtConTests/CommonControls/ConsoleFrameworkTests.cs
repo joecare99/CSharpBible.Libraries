@@ -4,8 +4,9 @@ using ConsoleLib.Interfaces;
 using System.Drawing;
 using System;
 using ConsoleLib.ExtCon;
+using ConsoleLib.CommonControls.Tests;
 
-namespace ConsoleLib.CommonControls.Tests;
+namespace ConsoleLib.ExtCon.CommonControls.Tests;
 
 [TestClass]
 public class ConsoleFrameworkTests: TestBase

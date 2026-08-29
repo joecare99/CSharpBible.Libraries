@@ -4,6 +4,8 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.ComponentModel;
 using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
 using ConsoleLib.ExtCon;
 
 namespace ConsoleLib.CommonControls.Tests;
@@ -11,6 +13,21 @@ namespace ConsoleLib.CommonControls.Tests;
 [TestClass]
 public class TextBoxTests : TestBase
 {
+    private sealed class ClipboardStub : IClipboardService
+    {
+        public string? Text { get; private set; }
+        public string? PasteText { get; set; }
+
+        public Task<bool> CopyAsync(string text, CancellationToken cancellationToken = default)
+        {
+            Text = text;
+            return Task.FromResult(true);
+        }
+
+        public Task<string?> PasteAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(PasteText);
+    }
+
     private sealed class BindModel : INotifyPropertyChanged
     {
         private string _name = string.Empty;
@@ -60,6 +77,10 @@ public class TextBoxTests : TestBase
 
         public static KeyEventStub Char(char ch) => new() { bKeyDown = true, KeyChar = ch, usKeyCode = 0, usScanCode = 0, dwControlKeyState = 0 };
         public static KeyEventStub Nav(ushort keyCode) => new() { bKeyDown = true, KeyChar = '\0', usKeyCode = keyCode, usScanCode = 0, dwControlKeyState = 0 };
+        public static KeyEventStub ShiftNav(ushort keyCode) => new() { bKeyDown = true, KeyChar = '\0', usKeyCode = keyCode, usScanCode = 0, dwControlKeyState = 0x10 };
+        public static KeyEventStub ControlNav(ushort keyCode) => new() { bKeyDown = true, KeyChar = '\0', usKeyCode = keyCode, usScanCode = 0, dwControlKeyState = 0x08 };
+        public static KeyEventStub ControlChar(char ch) => new() { bKeyDown = true, KeyChar = ch, usKeyCode = 0, usScanCode = 0, dwControlKeyState = 0x08 };
+        public static KeyEventStub ControlNavWithShift(ushort keyCode) => new() { bKeyDown = true, KeyChar = '\0', usKeyCode = keyCode, usScanCode = 0, dwControlKeyState = 0x18 };
     }
 
     private static void SetActive(TextBox tb, bool active)
@@ -217,6 +238,109 @@ public class TextBoxTests : TestBase
 
         tb.HandlePressKeyEvents(KeyEventStub.Char('x'));
         Assert.AreEqual("x", tb.Text);
+    }
+
+    [TestMethod]
+    public void SelectAllAndCopyAsync_CopiesSelectedText()
+    {
+        var clipboard = new ClipboardStub();
+        var tb = new TextBox { MultiLine = false, ClipboardService = clipboard };
+        tb.SetText("hello");
+        tb.SelectAll();
+
+        Assert.IsTrue(tb.CopyAsync().GetAwaiter().GetResult());
+        Assert.AreEqual("hello", clipboard.Text);
+        Assert.AreEqual("hello", tb.SelectedText);
+    }
+
+    [TestMethod]
+    public void PasteAsync_ReplacesSelectionAndPlacesCaretAfterInsertedText()
+    {
+        var clipboard = new ClipboardStub { PasteText = "X" };
+        var tb = new TextBox { MultiLine = false, ClipboardService = clipboard };
+        tb.SetText("hello");
+        tb.SelectAll();
+
+        Assert.IsTrue(tb.PasteAsync().GetAwaiter().GetResult());
+
+        Assert.AreEqual("X", tb.Text);
+        Assert.AreEqual((1, 0), tb.Caret);
+        Assert.AreEqual(string.Empty, tb.SelectedText);
+    }
+
+    [TestMethod]
+    public void ShiftNavigation_SelectsText_AndTypingReplacesIt()
+    {
+        var tb = new TextBox { MultiLine = false };
+        SetActive(tb, true);
+        tb.SetText("hello");
+        tb.Caret = (1, 0);
+
+        tb.HandlePressKeyEvents(KeyEventStub.ShiftNav(ConsoleFramework.VK_RIGHT));
+        tb.HandlePressKeyEvents(KeyEventStub.ShiftNav(ConsoleFramework.VK_RIGHT));
+
+        Assert.AreEqual("el", tb.SelectedText);
+        tb.HandlePressKeyEvents(KeyEventStub.Char('X'));
+
+        Assert.AreEqual("hXlo", tb.Text);
+        Assert.AreEqual((2, 0), tb.Caret);
+        Assert.AreEqual(string.Empty, tb.SelectedText);
+    }
+
+    [TestMethod]
+    public void ControlNavigation_MovesByWords_AndShiftSelectsWordRange()
+    {
+        var tb = new TextBox { MultiLine = false };
+        SetActive(tb, true);
+        tb.SetText("one two three");
+        tb.Caret = (0, 0);
+
+        tb.HandlePressKeyEvents(KeyEventStub.ControlNav(ConsoleFramework.VK_RIGHT));
+        Assert.AreEqual((4, 0), tb.Caret);
+
+        tb.HandlePressKeyEvents(KeyEventStub.ControlNavWithShift(ConsoleFramework.VK_RIGHT));
+        Assert.AreEqual("two ", tb.SelectedText);
+        Assert.AreEqual((8, 0), tb.Caret);
+    }
+
+    [TestMethod]
+    public void ControlBackspace_DeletesPreviousWordAndWhitespace()
+    {
+        var tb = new TextBox { MultiLine = false };
+        SetActive(tb, true);
+        tb.SetText("one two");
+        tb.HandlePressKeyEvents(KeyEventStub.ControlChar((char)8));
+
+        Assert.AreEqual("one ", tb.Text);
+        Assert.AreEqual((4, 0), tb.Caret);
+    }
+
+    [TestMethod]
+    public void ControlDelete_DeletesNextWord()
+    {
+        var tb = new TextBox { MultiLine = false };
+        SetActive(tb, true);
+        tb.SetText("one two");
+        tb.Caret = (0, 0);
+        tb.HandlePressKeyEvents(KeyEventStub.ControlChar((char)127));
+
+        Assert.AreEqual(" two", tb.Text);
+        Assert.AreEqual((0, 0), tb.Caret);
+    }
+
+    [TestMethod]
+    public void ControlWordNavigation_CrossesLineBoundaries()
+    {
+        var tb = new TextBox { MultiLine = true };
+        SetActive(tb, true);
+        tb.SetText("one\ntwo");
+        tb.Caret = (3, 0);
+
+        tb.HandlePressKeyEvents(KeyEventStub.ControlNav(ConsoleFramework.VK_RIGHT));
+        Assert.AreEqual((0, 1), tb.Caret);
+
+        tb.HandlePressKeyEvents(KeyEventStub.ControlNav(ConsoleFramework.VK_LEFT));
+        Assert.AreEqual((0, 0), tb.Caret);
     }
 
     private sealed class ReadOnlyObject : INotifyPropertyChanged

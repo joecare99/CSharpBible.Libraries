@@ -107,6 +107,24 @@ public class ControlTests : TestBase
     }
 
     [TestMethod]
+    public void Accelerator_ExecutesOnlyOnKeyDown()
+    {
+        var c = new TestControl { Accelerator = 'S' };
+        var clicks = 0;
+        c.OnClick += (_, _) => clicks++;
+        var key = Substitute.For<IKeyEvent>();
+        key.KeyChar.Returns('s');
+
+        key.bKeyDown.Returns(false);
+        c.ForceHandleKey(key);
+        key.bKeyDown.Returns(true);
+        c.ForceHandleKey(key);
+
+        Assert.AreEqual(1, clicks);
+        Assert.IsTrue(key.Handled);
+    }
+
+    [TestMethod]
     public void MouseEnterLeave_Propagates_To_Child()
     {
         var p = new TestControl{ Dimension=new Rectangle(0,0,20,3)};
@@ -162,6 +180,46 @@ public class ControlTests : TestBase
         var ke = Substitute.For<IKeyEvent>();
         ke.KeyChar.Returns('B'); ke.bKeyDown.Returns(true);
         p.HandlePressKeyEvents(ke);
+        Assert.IsTrue(ke.Handled);
+    }
+
+    [TestMethod]
+    public void HandlePressKeyEvents_ActiveControlGetsFirstChance_ThenSiblingAccelerator()
+    {
+        var p = new TestControl();
+        var active = new TestControl { Parent = p };
+        var sibling = new TestControl { Parent = p, Accelerator = 'B' };
+        p.ActiveControl = active;
+        int clicks = 0;
+        sibling.OnClick += (_, _) => clicks++;
+        var ke = Substitute.For<IKeyEvent>();
+        ke.KeyChar.Returns('B');
+        ke.bKeyDown.Returns(true);
+
+        p.HandlePressKeyEvents(ke);
+
+        Assert.AreEqual(1, clicks);
+        Assert.IsTrue(ke.Handled);
+    }
+
+    [TestMethod]
+    public void HandlePressKeyEvents_ActiveControlPrecedesParentAccelerator()
+    {
+        var parent = new TestControl { Accelerator = 'X' };
+        var active = new TestControl { Parent = parent, Accelerator = 'X' };
+        parent.ActiveControl = active;
+        int parentClicks = 0;
+        int activeClicks = 0;
+        parent.OnClick += (_, _) => parentClicks++;
+        active.OnClick += (_, _) => activeClicks++;
+        var ke = Substitute.For<IKeyEvent>();
+        ke.KeyChar.Returns('X');
+        ke.bKeyDown.Returns(true);
+
+        parent.HandlePressKeyEvents(ke);
+
+        Assert.AreEqual(0, parentClicks);
+        Assert.AreEqual(1, activeClicks);
         Assert.IsTrue(ke.Handled);
     }
 

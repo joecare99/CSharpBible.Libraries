@@ -29,7 +29,7 @@ public class ButtonTests : TestBase
         var b = new Button();
         b.Set(0,0,"X",ConsoleColor.Blue);
         b.MouseEnter(new Point(0,0));
-        Assert.IsFalse(b.Valid); // Invalidate ausgelöst
+        Assert.IsFalse(b.Valid); // Invalidate ausgelï¿½st
     }
 
     [TestMethod]
@@ -63,6 +63,6 @@ public class ButtonTests : TestBase
         button.Draw();
 
         Assert.AreEqual(8, button.size.Width);
-        StringAssert.Contains(__tstCon?.Content, "[1]");
+        StringAssert.Contains(__tstCon?.Content, "[  1");
     }
 }
