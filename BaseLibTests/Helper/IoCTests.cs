@@ -1,8 +1,8 @@
-﻿using System;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using BaseLib.Models.Tests;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using NSubstitute;
-using BaseLib.Models.Tests;
+using System;
 
 namespace BaseLib.Helper.Tests;
 
@@ -31,7 +31,7 @@ public class IoCTests : BaseTest
     {
         DoLog($"GetScope()");
         IServiceScope serviceScope = Substitute.For<IServiceScope>();
-        serviceScope.ServiceProvider.GetService(typeof(IServiceScopeFactory)).Returns( _f);
+        serviceScope.ServiceProvider.GetService(typeof(IServiceScopeFactory)).Returns(_f);
         return serviceScope;
     }
 
@@ -47,7 +47,7 @@ public class IoCTests : BaseTest
         IoC.GetReqSrv = GetReqSrv;
         IoC.GetScope = GetScope;
         _f = Substitute.For<IServiceScopeFactory>();
-        _f.CreateScope().Returns((_)=>GetScope());
+        _f.CreateScope().Returns((_) => GetScope());
     }
 
 
@@ -83,7 +83,7 @@ public class IoCTests : BaseTest
     [TestMethod()]
     public void GetNewScopeTest()
     {
-        var s =IoC.GetNewScope() ;
+        var s = IoC.GetNewScope();
         Assert.IsNotNull(s);
         var s2 = IoC.GetNewScope(s);
         Assert.IsNotNull(s2);
@@ -94,20 +94,21 @@ public class IoCTests : BaseTest
     [TestMethod()]
     public void SetCurrentScopeTest()
     {
-        var s = IoC.GetNewScope();
+        var s = IoC.Scope;
+        var s1 = IoC.GetNewScope();
         Assert.AreEqual("GetScope()\r\n", DebugLog);
-        Assert.AreEqual(s,IoC.Scope);
+        Assert.AreEqual(s, IoC.Scope);
         s.ServiceProvider.GetService(typeof(object)).Returns(null);
         var s2 = IoC.GetNewScope(s);
-        Assert.AreEqual(s2, IoC.Scope);
+        Assert.AreEqual(s, IoC.Scope);
         s2.ServiceProvider.GetService(typeof(object)).Returns(this);
         IoC.SetCurrentScope(s2);
         Assert.AreEqual(s2, IoC.Scope);
         Assert.IsNotNull(IoC.GetRequiredService<Object>());
         IoC.SetCurrentScope(s);
         Assert.AreEqual(s, IoC.Scope);
-        Assert.ThrowsExactly<InvalidOperationException>(()=> IoC.GetRequiredService<Object>());
-        Assert.AreEqual("GetScope()\r\nGetScope()\r\n", DebugLog);
+        Assert.ThrowsExactly<InvalidOperationException>(() => IoC.GetRequiredService<Object>());
+        Assert.AreEqual("GetScope()\r\n", DebugLog);
     }
 
     [TestMethod()]
