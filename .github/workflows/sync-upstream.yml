@@ -21,26 +21,19 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Check out upstream repository
-        uses: actions/checkout@v5
-        with:
-          repository: joecare99/CSharp
-          ref: master
-          path: upstream
-
-      - name: Copy upstream subdirectory
+      - name: Fetch upstream history
         run: |
-          rsync -a --delete --exclude='/.git/' --exclude='/.github/' --exclude='/upstream/' upstream/CSharpBible/Libraries/ ./
-          rm -rf upstream
+          git remote add upstream https://github.com/joecare99/CSharp.git
+          git fetch upstream master
+          git subtree split --prefix=CSharpBible/Libraries upstream/master -b upstream-libraries
 
-      - name: Commit and push changes
+      - name: Merge upstream history
         run: |
-          git add --all
-          if git diff --cached --quiet; then
-            echo "No upstream changes to sync"
+          if git merge-base --is-ancestor upstream-libraries HEAD; then
+            echo "Upstream history is already up to date"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "Sync Libraries from upstream"
+          git merge --no-ff --no-edit --allow-unrelated-histories -X theirs upstream-libraries
           git push origin "HEAD:${GITHUB_REF_NAME}"

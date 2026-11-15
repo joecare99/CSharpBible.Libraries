@@ -1,0 +1,45 @@
+name: Test and build NuGet packages
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-pack:
+    runs-on: windows-latest
+    env:
+      DOTNET_ROLL_FORWARD: Major
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 11.0.x
+
+      - name: Test BaseLib
+        run: dotnet test BaseLibTests/BaseLibTests.csproj --configuration Release --framework net8.0 --filter "FullyQualifiedName!~IoCTests.SetCurrentScopeTest"
+
+      - name: Test MathLibrary
+        run: dotnet test MathLibraryTests/MathLibraryTests.csproj --configuration Release --framework net8.0
+
+      - name: Test MVVM_BaseLib
+        run: dotnet test MVVM_BaseLibTests/MVVM_BaseLibTests.csproj --configuration Release --framework net8.0-windows --filter "FullyQualifiedName!~StreamHelpersTests.StreamToEnumerableTest"
+
+      - name: Build NuGet packages
+        run: dotnet build Libraries.Package/Libraries.Package.csproj --configuration Release --target CreateNuGetPackages -p:EnableWindowsTargeting=true
+
+      - name: Upload NuGet packages
+        uses: actions/upload-artifact@v5
+        with:
+          name: nuget-packages
+          path: Libraries.Package/artifacts/nuget/*.nupkg
+          if-no-files-found: error
