@@ -1,0 +1,46 @@
+name: Sync upstream Libraries
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-upstream-libraries
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout destination repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check out upstream repository
+        uses: actions/checkout@v4
+        with:
+          repository: joecare99/CSharp
+          ref: master
+          path: upstream
+
+      - name: Copy upstream subdirectory
+        run: |
+          rsync -a --delete --exclude='/.git/' --exclude='/.github/' --exclude='/upstream/' upstream/CSharpBible/Libraries/ ./
+          rm -rf upstream
+
+      - name: Commit and push changes
+        run: |
+          git add --all
+          if git diff --cached --quiet; then
+            echo "No upstream changes to sync"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Sync Libraries from upstream"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
