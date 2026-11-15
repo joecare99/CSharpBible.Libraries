@@ -17,6 +17,7 @@
 using BaseLib.Interfaces;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Security;
 
@@ -183,7 +184,17 @@ public static class StringUtils
     /// Thrown when the format string is invalid or when there are more placeholders than parameters.
     /// </exception>
     public static string Format(this string aStr, params object[] par)
-        => string.Format(aStr, par);
+        => string.Format(CultureInfo.InvariantCulture, aStr, par);
+
+    /// <summary>
+    /// Formats a string using the specified format provider and arguments.
+    /// </summary>
+    /// <param name="aStr">The format string.</param>
+    /// <param name="provider">The format provider to use.</param>
+    /// <param name="par">The format arguments.</param>
+    /// <returns>The formatted string.</returns>
+    public static string Format(this string aStr, IFormatProvider provider, params object[] par)
+        => string.Format(provider, aStr, par);
 
     /// <summary>
     /// Extracts the first part of a string before the specified separator.
@@ -210,7 +221,8 @@ public static class StringUtils
     /// <seealso cref="SRest(string, string)"/>
     public static string SFirst(this string s, string sep = " ")
     {
-        if (!s.Contains(sep)) return s;
+        if (!s.Contains(sep))
+            return s;
         return s.Substring(0, s.IndexOf(sep));
     }
 
@@ -239,7 +251,8 @@ public static class StringUtils
     /// <seealso cref="SFirst(string, string)"/>
     public static string SRest(this string s, string sep = " ")
     {
-        if (!s.Contains(sep)) return "";
+        if (!s.Contains(sep))
+            return "";
         return s.Substring(s.IndexOf(sep) + 1);
     }
 
@@ -504,11 +517,14 @@ public static class StringUtils
     /// </example>
     public static bool IsValidIdentifyer(this string? s)
     {
-        if (string.IsNullOrWhiteSpace(s)) return false;
+        if (string.IsNullOrWhiteSpace(s))
+            return false;
         var _s = s!.ToUpper();
-        if (!AlphaUpper.Contains(_s[0])) return false;
+        if (!AlphaUpper.Contains(_s[0]))
+            return false;
         foreach (var c in _s)
-            if (!(AlphaNumeric + "_").Contains(c)) return false;
+            if (!(AlphaNumeric + "_").Contains(c))
+                return false;
         return true;
     }
 
@@ -630,9 +646,11 @@ public static class StringUtils
     {
         string s => s,
         IHasValue f => f.Value.AsString(),
+        byte[] ab => "(" + string.Join(", ", ab) + ")",
         null => "",
         object o => o.ToString() ?? "",
     };
+
 
     /// <summary>
     /// Copies elements from a string array into a target list of strings at a specified offset.
@@ -693,7 +711,7 @@ public static class StringUtils
     /// <returns>
     /// The zero-based index of the next placeholder start if one exists; otherwise, the length of the line plus one.
     /// </returns>
-    public static int GetNextPlaceHolder(this string line, int offset=0)
+    public static int GetNextPlaceHolder(this string line, int offset = 0)
     {
         int result = line.Length + 1;
         int i = offset;
@@ -749,17 +767,37 @@ public static class StringUtils
         return Match(Mask, Probe);
 
 
+        /// <summary>
+        /// Matches the remaining mask against the remaining probe text.
+        /// </summary>
+        /// <param name="currentMask">The part of the mask that has not been processed yet.</param>
+        /// <param name="currentProbe">The part of the probe text that has not been processed yet.</param>
+        /// <returns>
+        /// <c>true</c> when the remaining mask and probe text match completely; otherwise, <c>false</c>.
+        /// </returns>
+        /// <remarks>
+        /// The method first consumes the literal prefix before the next placeholder. It then
+        /// identifies the placeholder and delegates the search for its value to the helper
+        /// methods below. The recursive call is what allows a mask containing several
+        /// placeholders to be evaluated from left to right.
+        /// </remarks>
         bool Match(string currentMask, string currentProbe)
         {
             var placeholderIndex = FindPlaceholderIndex(currentMask);
+
+            // If there is no placeholder left, the complete remainder must be a literal match.
             if (placeholderIndex >= currentMask.Length)
                 return currentMask.Equals(currentProbe, StringComparison.OrdinalIgnoreCase);
 
             var literalPrefix = currentMask.Substring(0, placeholderIndex);
+
+            // A literal prefix cannot be absorbed by a placeholder, so it must occur exactly here.
             if (!currentProbe.StartsWith(literalPrefix, StringComparison.OrdinalIgnoreCase))
                 return false;
 
             var placeholderEnd = currentMask.IndexOf('>', placeholderIndex);
+
+            // An opening placeholder marker without a closing marker is not a valid mask.
             if (placeholderEnd < 0)
                 return false;
 
@@ -767,12 +805,28 @@ public static class StringUtils
             var suffix = currentMask.Substring(placeholderEnd + 1);
             var probeRemainder = currentProbe.Substring(literalPrefix.Length);
 
+            // A final placeholder receives all remaining probe text. Otherwise, the next
+            // literal or placeholder in the suffix determines possible split positions.
             if (suffix.Length == 0)
                 return TryAssignCandidate(probeRemainder, placeholderToken, suffix, string.Empty);
 
             return TryMatchWithAnchors(placeholderToken, suffix, probeRemainder);
         }
 
+        /// <summary>
+        /// Tries the possible values of a placeholder by using the next literal part of the
+        /// suffix as an anchor whenever one is available.
+        /// </summary>
+        /// <param name="placeholderToken">The complete placeholder token, including its angle brackets.</param>
+        /// <param name="suffix">The part of the mask following the placeholder.</param>
+        /// <param name="probeRemainder">The probe text following the already matched literal prefix.</param>
+        /// <returns><c>true</c> when a candidate produces a complete match; otherwise, <c>false</c>.</returns>
+        /// <remarks>
+        /// If the suffix starts with literal text, every occurrence of that text in the probe
+        /// remainder is a possible end of the placeholder value. If the suffix starts with
+        /// another placeholder, no literal anchor is available, so every split position must
+        /// be tested. This exhaustive search also supports empty placeholder values.
+        /// </remarks>
         bool TryMatchWithAnchors(string placeholderToken, string suffix, string probeRemainder)
         {
             var nextPlaceholder = FindPlaceholderIndex(suffix);
@@ -783,6 +837,8 @@ public static class StringUtils
                 var searchIndex = 0;
                 while (true)
                 {
+                    // Each occurrence of the anchor represents a possible boundary between
+                    // the current placeholder and the remainder of the mask.
                     var anchorPos = probeRemainder.IndexOf(literalAnchor, searchIndex, StringComparison.OrdinalIgnoreCase);
                     if (anchorPos < 0)
                         break;
@@ -796,6 +852,8 @@ public static class StringUtils
                 return false;
             }
 
+            // With no literal anchor, try all candidate lengths, including zero and the
+            // complete remainder. Failed recursive branches roll back their assignments.
             for (var split = 0; split <= probeRemainder.Length; split++)
             {
                 if (TryAssignCandidate(probeRemainder.Substring(0, split), placeholderToken, suffix, probeRemainder.Substring(split)))
@@ -805,9 +863,28 @@ public static class StringUtils
             return false;
         }
 
+        /// <summary>
+        /// Validates and temporarily records a candidate value for a placeholder before matching
+        /// the remainder of the mask.
+        /// </summary>
+        /// <param name="value">The raw text selected as the placeholder value.</param>
+        /// <param name="placeholderToken">The placeholder token receiving the value.</param>
+        /// <param name="suffix">The remaining mask to match after the assignment.</param>
+        /// <param name="remainingProbe">The remaining probe text to match against the suffix.</param>
+        /// <returns>
+        /// <c>true</c> when the assignment and all subsequent matching succeed; otherwise, <c>false</c>.
+        /// </returns>
+        /// <remarks>
+        /// Values are trimmed before validation and storage. The assignment is added before the
+        /// recursive match so deeper levels can contribute to the same result list. If that
+        /// recursive branch fails, only the assignment made by this call is removed, preserving
+        /// assignments belonging to its callers.
+        /// </remarks>
         bool TryAssignCandidate(string value, string placeholderToken, string suffix, string remainingProbe)
         {
             var trimmed = value.Trim();
+
+            // A validator can reject the candidate without changing the collected assignments.
             if (checkPlaceholderCharset?.Invoke(placeholderToken, trimmed) == false)
                 return false;
 
@@ -815,10 +892,22 @@ public static class StringUtils
             if (Match(suffix, remainingProbe))
                 return true;
 
+            // The candidate led to a dead end, so remove it before another split is attempted.
             WilldCardFill.RemoveAt(WilldCardFill.Count - 1);
             return false;
         }
 
+        /// <summary>
+        /// Finds the first placeholder token in a mask pattern.
+        /// </summary>
+        /// <param name="pattern">The mask pattern to inspect.</param>
+        /// <returns>
+        /// The zero-based index of the next placeholder, or the pattern length when none exists.
+        /// </returns>
+        /// <remarks>
+        /// Returning the pattern length instead of a sentinel such as <c>-1</c> lets callers
+        /// safely use the result for substring boundaries and for the no-placeholder case.
+        /// </remarks>
         int FindPlaceholderIndex(string pattern)
         {
             if (string.IsNullOrEmpty(pattern))

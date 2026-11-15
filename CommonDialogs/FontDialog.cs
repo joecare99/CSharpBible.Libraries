@@ -11,9 +11,11 @@
 // </copyright>
 // <summary></summary>
 // ***********************************************************************
+using CommonDialogs.Helper;
 using CommonDialogs.Interfaces;
-using System.Windows.Forms;
+using CommonDialogs.Models;
 using System.ComponentModel;
+using System.Windows.Forms;
 
 namespace CommonDialogs;
 
@@ -25,7 +27,16 @@ namespace CommonDialogs;
 public class FontDialog : System.Windows.Forms.FontDialog, IFontDialog
 {
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
-    public new System.Drawing.Font Font { get => base.Font;set => base.Font = value; }
+    public new FontDialogSelection Font
+    {
+        get => base.Font.ToDialogSelection(base.Color);
+        set
+        {
+            var selection = value ?? new FontDialogSelection();
+            base.Font = selection.ToDrawingFont(base.Font);
+            base.Color = selection.Color.ToDrawingColor();
+        }
+    }
 
     /// <summary>
     /// Führt ein Standarddialogfeld mit einem Standardbesitzer aus.

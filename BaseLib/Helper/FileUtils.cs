@@ -37,7 +37,7 @@ public static class FileUtils
     {
         if (!sNewExt.Contains(ExtSeparator))
             sNewExt = ExtSeparator + sNewExt;
-        string sFilepath = sFilename.Substring(0,sFilename.LastIndexOfAny(new char[] { Path.DirectorySeparatorChar, ':' })+1);
+        string sFilepath = sFilename.Substring(0, sFilename.LastIndexOfAny(new char[] { Path.DirectorySeparatorChar, ':' }) + 1);
         return sFilepath + Path.GetFileNameWithoutExtension(sFilename) + sNewExt;
     }
 
@@ -50,7 +50,7 @@ public static class FileUtils
     /// </param>
     /// <returns>
     ///   <strong>true</strong> if fil was created.</returns>
-    public static bool WriteStringToFile(string sFilename,string sPayload)
+    public static bool WriteStringToFile(string sFilename, string sPayload)
     {
         using (Stream fs = xFile.OpenWrite(sFilename))
         using (StreamWriter sw = new(fs))
@@ -65,7 +65,8 @@ public static class FileUtils
     /// <returns>the data of the file</returns>
     public static string? ReadStringFromFile(string sFilename)
     {
-        if (!xFile.Exists(sFilename)) return null;
+        if (!xFile.Exists(sFilename))
+            return null;
         string sResult = "";
         using (Stream fs = xFile.OpenRead(sFilename))
         using (StreamReader sw = new(fs))
@@ -90,14 +91,14 @@ public static class FileUtils
         // Deletes "NewFile" if exists
         if (xFile.Exists(sNewFilename))
         {
-             xFile.Delete(sNewFilename);
+            xFile.Delete(sNewFilename);
         }
         // Save the File as "NewFile"
         try
         {
             actSaveFile(sNewFilename, oData);
         }
-        catch 
+        catch
         {
             if (xFile.Exists(sNewFilename))
                 try
@@ -118,14 +119,22 @@ public static class FileUtils
                 xFile.Delete(sBakFilename);
             }
             // Do the Switch New -> File -> Bak
-            if (sNewFilename == sFilename) { }
+            if (sNewFilename == sFilename)
+            {
+            }
             else
-
+            {
                 if (xFile.Exists(sFilename))
-                File.Replace(sNewFilename, sFilename, sBakFilename);
-            else
-                xFile.Move(sNewFilename, sFilename);
-                return true;
-        }          
+                {
+                    File.Replace(sNewFilename, sFilename, sBakFilename);
+                }
+                else
+                {
+                    xFile.Move(sNewFilename, sFilename);
+                }
+            }
+
+            return true;
+        }
     }
 }

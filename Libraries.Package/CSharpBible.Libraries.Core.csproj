@@ -1,0 +1,57 @@
+<Project>
+	<Import Project="..\Libraries.props" />
+	<PropertyGroup>
+		<TargetFrameworks>net462;net472;net48;net481;net8.0</TargetFrameworks>
+		<NoDefaultExcludes>true</NoDefaultExcludes>
+		<IsPackable>true</IsPackable>
+		<IncludeBuildOutput>false</IncludeBuildOutput>
+		<PackageId>JCSoft.CSharpBible.Libraries.Core</PackageId>
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<PackageOutputPath>$(UpDir)\..\.packages</PackageOutputPath>
+		<Version>1.0.2</Version>
+		<Title>CSharpBible Libraries Core</Title>
+		<Description>Core package for the platform-neutral CSharpBible libraries.</Description>
+		<PackageReadmeFile>README.Core.md</PackageReadmeFile>
+		<Configurations>Debug;Release</Configurations>
+	</PropertyGroup>
+	<Import Sdk="Microsoft.NET.Sdk" Project="Sdk.props" />
+	<Import Sdk="Microsoft.NET.Sdk" Project="Sdk.targets" />
+	<PropertyGroup Condition="$([MSBuild]::VersionGreaterThanOrEquals('$(NETCoreSdkVersion)', '9.0.100'))">
+		<TargetFrameworks>$(TargetFrameworks);net9.0</TargetFrameworks>
+	</PropertyGroup>
+	<PropertyGroup Condition="$([MSBuild]::VersionGreaterThanOrEquals('$(NETCoreSdkVersion)', '10.0.100'))">
+		<TargetFrameworks>$(TargetFrameworks);net10.0</TargetFrameworks>
+	</PropertyGroup>
+	<PropertyGroup Condition="$([MSBuild]::VersionGreaterThanOrEquals('$(NETCoreSdkVersion)', '11.0.100'))">
+		<TargetFrameworks>$(TargetFrameworks);net11.0</TargetFrameworks>
+	</PropertyGroup>
+	<ItemGroup>
+		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="11.0.0" />
+		<PackageReference Include="System.Text.Json" Version="11.0.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Include="README.Core.md" Pack="true" PackagePath="\" />
+		<None Include="$(UpDir)\..\bin\BaseLib\$(Configuration)\**\*.dll" Pack="true" PackagePath="lib" Visible="false" />
+		<None Include="$(UpDir)\..\bin\BaseLib\$(Configuration)\**\*.xml" Pack="true" PackagePath="lib" Visible="false" />
+		<None Include="$(UpDir)\..\bin\CommonDialogs.Abstractions\$(Configuration)\**\*.dll" Pack="true" PackagePath="lib" Visible="false" />
+		<None Include="$(UpDir)\..\bin\CommonDialogs.Abstractions\$(Configuration)\**\*.xml" Pack="true" PackagePath="lib" Visible="false" />
+		<None Include="$(UpDir)\..\bin\ConsoleDisplay\$(Configuration)\**\*.dll" Pack="true" PackagePath="lib" Visible="false" />
+		<None Include="$(UpDir)\..\bin\ConsoleDisplay\$(Configuration)\**\*.xml" Pack="true" PackagePath="lib" Visible="false" />
+		<None Include="$(UpDir)\..\bin\ConsoleLib\$(Configuration)\**\*.dll" Pack="true" PackagePath="lib" Visible="false" />
+		<None Include="$(UpDir)\..\bin\ConsoleLib\$(Configuration)\**\*.xml" Pack="true" PackagePath="lib" Visible="false" />
+		<None Include="$(UpDir)\..\bin\ConsoleLib.Rendering\$(Configuration)\**\*.dll" Pack="true" PackagePath="lib" Visible="false" />
+		<None Include="$(UpDir)\..\bin\ConsoleLib.Rendering\$(Configuration)\**\*.xml" Pack="true" PackagePath="lib" Visible="false" />
+		<None Include="$(UpDir)\..\bin\GenInterfaces\$(Configuration)\**\*.dll" Pack="true" PackagePath="lib" Visible="false" />
+		<None Include="$(UpDir)\..\bin\GenInterfaces\$(Configuration)\**\*.xml" Pack="true" PackagePath="lib" Visible="false" />
+		<None Include="$(UpDir)\..\bin\MathLibrary\$(Configuration)\**\*.dll" Pack="true" PackagePath="lib" Visible="false" />
+		<None Include="$(UpDir)\..\bin\MathLibrary\$(Configuration)\**\*.xml" Pack="true" PackagePath="lib" Visible="false" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Compile Remove="obj\**" />
+		<EmbeddedResource Remove="obj\**" />
+		<None Remove="obj\**" />
+	</ItemGroup>
+</Project>

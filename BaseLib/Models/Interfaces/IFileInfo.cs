@@ -33,6 +33,11 @@ public interface IFileInfo
     long Length { get; }
 
     /// <summary>
+    /// Gets the date and time when the file was last written.
+    /// </summary>
+    DateTime LastWriteTime { get; }
+
+    /// <summary>
     /// Gets whether the file exists.
     /// </summary>
     bool Exists { get; }

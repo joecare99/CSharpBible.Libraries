@@ -11,10 +11,11 @@
 // </copyright>
 // <summary></summary>
 // ***********************************************************************
-using System.ComponentModel;
-using System.Drawing;
-using System.Windows.Forms;
+using CommonDialogs.Helper;
 using CommonDialogs.Interfaces;
+using CommonDialogs.Models;
+using System.ComponentModel;
+using System.Windows.Forms;
 
 /// <summary>
 /// The CommonDialogs namespace.
@@ -60,7 +61,11 @@ public partial class ColorDialog : Component, IColorDialog
     /// </summary>
     /// <value>The color.</value>
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
-    public Color Color { get => _cd.Color; set => _cd.Color = value; }
+    public DialogColor Color
+    {
+        get => _cd.Color.ToDialogColor();
+        set => _cd.Color = value.ToDrawingColor();
+    }
 
 
     /// <summary>

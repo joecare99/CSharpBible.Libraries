@@ -1,26 +1,32 @@
 # ConsoleLib
 
-Rich, testable console UI toolkit for .NET / Windows terminals. Provides an abstraction (`IConsole`) plus higher level controls (Label, TextBox, ListBox, Application, layout helpers) with a simple invalidation + message queue system. Targets multiple frameworks including classic .NET Framework (for legacy host apps) and modern .NET 6–9.
+Rich, testable console UI toolkit for .NET terminals. The core is host-neutral;
+`ConsoleLib.ExtCon` provides the Windows/ExtendedConsole backend and
+`ConsoleLib.Posix` provides ANSI/VT output and input for Linux, macOS, SSH,
+tmux, and redirected streams.
 
 ## Purpose
 Enable structured, MVVM-friendly console applications (prototyping, headless admin tools, data / search demos) without dropping to raw `System.Console` calls. Focus on:
 - Composability of controls
 - Deterministic repainting (no flicker)
 - Simple binding hooks (lightweight, reflection-based)
-- Cross-target (net462+ through net9.0)
+- Modern .NET target set for the reusable core library
 
 ## Key Features
 - `Application` root control with message loop integration.
 - Focus / active control handling.
 - Text input with caret, multi-line editing, navigation.
-- List rendering (scrolling, selection – extensible).
+- List rendering (scrolling, selection ï¿½ extensible).
 - Basic 2?way binding support for `TextBox` (model <-> text) and (extension ready) selection.
 - Drawing API via `TextCanvas` (rect fill, bordered boxes, character output).
-- Separation of concerns through `IConsole` abstraction (enables mocking and testing without real console).
+- Separation of concerns through `IConsole` and `IWidgetSet` abstractions.
+- Backend-specific rendering and host-loop implementations can live in separate projects such as `ConsoleLib.ExtCon` or other host-specific adapters.
+- CXAML loading, deterministic source generation, and the Avalonia designer are
+  available through the CXAML projects and use the same runtime loader.
 
 ## Targets
 ```
-net462; net472; net48; net481; net6.0-windows; net7.0-windows; net8.0-windows; net9.0-windows
+net8.0; net9.0; net10.0
 ```
 
 ## Getting Started
@@ -31,14 +37,37 @@ net462; net472; net48; net481; net6.0-windows; net7.0-windows; net8.0-windows; n
 ```
 
 ## Basic Usage
-```csharp
-var app = new Application(console, extendedConsole)
-{
-    BackColor = ConsoleColor.DarkBlue
-};
-new Label { Parent = app, Text = "Hello ConsoleLib", Dimension = new(0,0,30,1)};
-app.Run();
+Reference the core project plus a concrete backend such as `ConsoleLib.ExtCon`
+or `ConsoleLib.Posix`, then create the application with an `IWidgetSet`
+implementation. For a declarative view, embed a `.cxaml` file and load it with
+`CxamlLoader`; the parallel examples under `Calc`, `ConsoleApps`, `Games`, and
+`OpenAI` demonstrate this without replacing the imperative applications.
+
+## POSIX host safety
+
+Use `PosixTerminalTransport` with redirected streams in CI and a TTY in
+interactive sessions. Raw mode is scoped to the host lifetime and restored on
+normal completion, cancellation, and transport failure. Terminals without SGR
+mouse support remain keyboard-operable; clipboard integration is opt-in.
+
+## Validation
+
+The split test projects are `ConsoleLib.CoreTests`, `ConsoleLib.ExtConTests`,
+`ConsoleLib.PosixTests`, `ConsoleLib.Cxaml.DesignerTests`, and
+`ConsoleLib.Cxaml.ExamplesTests`. Run them individually when diagnosing a
+backend and collect line coverage with:
+
+```text
+dotnet test <test-project.csproj> --collect:"XPlat Code Coverage"
 ```
+
+## Application services
+
+The core also provides independent, DI-friendly application services:
+`ApplicationMessageQueue` and `ApplicationDispatcher` provide an instance-scoped
+FIFO dispatch queue, while `ApplicationScheduler` schedules work onto that
+dispatcher through the `IScheduler` and `IClock` abstractions. These services
+are additive and do not replace the legacy `Control.MessageQueue`.
 
 ## Binding Example
 ```csharp
@@ -51,6 +80,8 @@ box.BindTwoWay(viewModel, nameof(viewModel.SearchText));
 - Redraws are explicit (`Invalidate`) -> message queue flush ensures stable frame.
 - Minimal allocations per frame; string building localized.
 - Thread safety: coarse `lock` in drawing primitives (adequate for UI thread use, not for high-frequency multi-thread rendering).
+- The core library intentionally no longer contains the concrete ExtendedConsole-backed widget set.
+- The `ConsoleLib` core itself is intended to stay host- and OS-neutral; platform-specific event or rendering integrations belong in separate backend projects.
 
 ## Roadmap
 - Horizontal / vertical layout managers.
@@ -64,4 +95,4 @@ box.BindTwoWay(viewModel, nameof(viewModel.SearchText));
 3. PR must include scenario description and (if feasible) a small demo snippet.
 
 ## License
-(Insert license notice here – e.g. MIT / proprietary.)
+(Insert license notice here ï¿½ e.g. MIT / proprietary.)

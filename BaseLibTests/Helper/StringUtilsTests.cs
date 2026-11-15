@@ -14,7 +14,9 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
+using System.Net;
 using static BaseLib.Helper.TestHelper;
 /// <summary>
 /// The Tests namespace.
@@ -118,11 +120,12 @@ public class StringUtilsTests
     [DataRow("This is a Newline", "This is a {0}", "Newline")]
     [DataRow("This is a HexNumber 008CEA1F", "This is a HexNumber {0:X8}", 9234975)]
     [DataRow("This is a Number 07346238", "This is a Number {0:D8}", 7346238)]
-    [DataRow("This is a Number 1,414", "This is a Number {0}", 1.414)] //!!
-    [DataRow("This is a Number 3,14", "This is a Number {0:F2}", 3.141525345)]
+    [DataRow("This is a Number 1.414", "This is a Number {0}", 1.414)] //!!
+    [DataRow("This is a Number 3.14", "This is a Number {0:F2}", 3.141525345)]
     [DataRow("A () guess !", "A ({0}) guess !", null)]
     public void FormatTest(string sExp, string sWork, object sMsg)
     {
+        CultureInfo.CurrentUICulture = CultureInfo.InvariantCulture;        
         Assert.AreEqual(sExp, StringUtils.Format(sWork, sMsg));
     }
 
@@ -131,11 +134,12 @@ public class StringUtilsTests
     [DataRow("This is a Newline", "This is a {0}", "Newline")]
     [DataRow("This is a HexNumber 008CEA1F", "This is a HexNumber {0:X8}", 9234975)]
     [DataRow("This is a Number 07346238", "This is a Number {0:D8}", 7346238)]
-    [DataRow("This is a Number 1,414", "This is a Number {0}", 1.414)] //!!
-    [DataRow("This is a Number 3,14", "This is a Number {0:F2}", 3.141525345)]
+    [DataRow("This is a Number 1.414", "This is a Number {0}", 1.414)] //!!
+    [DataRow("This is a Number 3.14", "This is a Number {0:F2}", 3.141525345)]
     [DataRow("A () guess !", "A ({0}) guess !", null)]
     public void FormatTest1(string sExp, string sWork, object sMsg)
     {
+        CultureInfo.CurrentUICulture = CultureInfo.InvariantCulture;
         Assert.AreEqual(sExp, sWork.Format(sMsg));
     }
 
@@ -318,37 +322,37 @@ public class StringUtilsTests
     }
 
     [TestMethod()]
-    [DataRow(null,  false)]
-    [DataRow("",  false)]
-    [DataRow("_",  false)]
-    [DataRow("Empty",  true)]
-    [DataRow("Empty_34",  true)]
-    [DataRow("2mpty2",  false)]
-    [DataRow("Emp ty2",  false)]
-    [DataRow("NIO1 ",  false)]
+    [DataRow(null, false)]
+    [DataRow("", false)]
+    [DataRow("_", false)]
+    [DataRow("Empty", true)]
+    [DataRow("Empty_34", true)]
+    [DataRow("2mpty2", false)]
+    [DataRow("Emp ty2", false)]
+    [DataRow("NIO1 ", false)]
     public void IsValidIdentifyerTest(string sAct, bool xExp)
     {
-        Assert.AreEqual(xExp,sAct.IsValidIdentifyer());
+        Assert.AreEqual(xExp, sAct.IsValidIdentifyer());
     }
 
     [TestMethod()]
-    [DataRow("This is a test",14, "This is a test")]
-    [DataRow("This is a test",0, "")]
-    [DataRow("This is a test",-1, "This is a tes")]
-    [DataRow("This is a test",1, "T")]
-    [DataRow("This is a test",20, "This is a test")]
-    public void LeftTest(string sAct,int iAct, string sExp)
+    [DataRow("This is a test", 14, "This is a test")]
+    [DataRow("This is a test", 0, "")]
+    [DataRow("This is a test", -1, "This is a tes")]
+    [DataRow("This is a test", 1, "T")]
+    [DataRow("This is a test", 20, "This is a test")]
+    public void LeftTest(string sAct, int iAct, string sExp)
     {
         Assert.AreEqual(sExp, sAct.Left(iAct));
     }
 
     [TestMethod()]
-    [DataRow("This is a test",14, "This is a test")]
-    [DataRow("This is a test",0, "")]
-    [DataRow("This is a test",-1, "his is a test")]
-    [DataRow("This is a test",1, "t")]
-    [DataRow("This is a test",20, "This is a test")]
-    public void RightTest(string sAct,int iAct, string sExp)
+    [DataRow("This is a test", 14, "This is a test")]
+    [DataRow("This is a test", 0, "")]
+    [DataRow("This is a test", -1, "his is a test")]
+    [DataRow("This is a test", 1, "t")]
+    [DataRow("This is a test", 20, "This is a test")]
+    public void RightTest(string sAct, int iAct, string sExp)
     {
         Assert.AreEqual(sExp, sAct.Right(iAct));
     }
@@ -360,7 +364,7 @@ public class StringUtilsTests
     [DataRow(false, "False")]
     [DataRow(1234, "1234")]
 
-    public void AsStringTest(object? oAct,string sExp)
+    public void AsStringTest(object? oAct, string sExp)
     {
         Assert.AreEqual(sExp, oAct.AsString());
     }
@@ -453,6 +457,266 @@ public class StringUtilsTests
 
         // Assert
         Assert.AreEqual(expected, result, $"Input: '{input}'");
+    }
+
+    /// <summary>
+    /// Verifies that a mask without placeholders is matched case-insensitively.
+    /// </summary>
+    [TestMethod]
+    public void TryPlaceHolderMatchingMatchesLiteralCaseInsensitively()
+    {
+        var fills = new List<KeyValuePair<string, string>>();
+
+        var result = StringUtils.TryPlaceHolderMatching("Hello WORLD", "hello world", fills);
+
+        Assert.IsTrue(result);
+        Assert.AreEqual(0, fills.Count);
+    }
+
+    /// <summary>
+    /// Verifies that a placeholder bounded by literal text captures and trims its value.
+    /// </summary>
+    [TestMethod]
+    public void TryPlaceHolderMatchingCapturesTrimmedValue()
+    {
+        var fills = new List<KeyValuePair<string, string>>();
+
+        var result = StringUtils.TryPlaceHolderMatching("Hello,   Alice   !", "hello, <Name>!", fills);
+
+        Assert.IsTrue(result);
+        CollectionAssert.AreEqual(
+            new[] { new KeyValuePair<string, string>("<Name>", "Alice") },
+            fills);
+    }
+
+    /// <summary>
+    /// Verifies that a charset callback can reject a placeholder value without recording it.
+    /// </summary>
+    [TestMethod]
+    public void TryPlaceHolderMatchingRejectsValueRejectedByCharsetCallback()
+    {
+        var fills = CreateSeededWildcardFill();
+
+        var result = StringUtils.TryPlaceHolderMatching(
+            "id=not-a-number",
+            "id=<Integer:Id>",
+            fills,
+            testCharset);
+
+        Assert.IsFalse(result);
+        CollectionAssert.AreEqual(
+            new[] { new KeyValuePair<string, string>(RootPlaceholder, "0") },
+            fills);
+    }
+
+    /// <summary>
+    /// Verifies that a failed recursive branch rolls back all assignments made by that branch.
+    /// </summary>
+    [TestMethod]
+    public void TryPlaceHolderMatchingRollsBackAssignmentsWhenSuffixDoesNotMatch()
+    {
+        var fills = CreateSeededWildcardFill();
+
+        var result = StringUtils.TryPlaceHolderMatching("prefix-value-X", "prefix-<Value>-Y", fills);
+
+        Assert.IsFalse(result);
+        CollectionAssert.AreEqual(
+            new[] { new KeyValuePair<string, string>(RootPlaceholder, "0") },
+            fills);
+    }
+
+    /// <summary>
+    /// Verifies that null probe and mask values are treated as empty strings.
+    /// </summary>
+    [TestMethod]
+    public void TryPlaceHolderMatchingTreatsNullProbeAndMaskAsEmpty()
+    {
+        var fills = new List<KeyValuePair<string, string>>();
+
+        Assert.IsTrue(StringUtils.TryPlaceHolderMatching(null!, "", fills));
+        Assert.IsTrue(StringUtils.TryPlaceHolderMatching("", null!, fills));
+        Assert.AreEqual(0, fills.Count);
+    }
+
+    /// <summary>
+    /// Verifies that an empty value can be assigned when the placeholder is bounded by matching literals.
+    /// </summary>
+    [TestMethod]
+    public void TryPlaceHolderMatchingAllowsEmptyPlaceholderValue()
+    {
+        var fills = new List<KeyValuePair<string, string>>();
+
+        var result = StringUtils.TryPlaceHolderMatching("prefixsuffix", "prefix<Value>suffix", fills);
+
+        Assert.IsTrue(result);
+        CollectionAssert.AreEqual(
+            new[] { new KeyValuePair<string, string>("<Value>", "") },
+            fills);
+    }
+
+    /// <summary>
+    /// Verifies that a placeholder without a closing angle bracket is rejected.
+    /// </summary>
+    [TestMethod]
+    public void TryPlaceHolderMatchingRejectsUnclosedPlaceholder()
+    {
+        var fills = CreateSeededWildcardFill();
+
+        var result = StringUtils.TryPlaceHolderMatching("prefix-value", "prefix-<Value", fills);
+
+        Assert.IsFalse(result);
+        CollectionAssert.AreEqual(
+            new[] { new KeyValuePair<string, string>(RootPlaceholder, "0") },
+            fills);
+    }
+
+    /// <summary>
+    /// Verifies that a null fill list is rejected before matching starts.
+    /// </summary>
+    [TestMethod]
+    public void TryPlaceHolderMatchingThrowsForNullFillList()
+    {
+        Assert.ThrowsExactly<ArgumentNullException>(() =>
+            StringUtils.TryPlaceHolderMatching("value", "<Value>", null!));
+    }
+
+    /// <summary>
+    /// Verifies that several placeholders are resolved recursively from left to right.
+    /// </summary>
+    [TestMethod]
+    public void TryPlaceHolderMatchingCapturesMultipleValues()
+    {
+        var fills = new List<KeyValuePair<string, string>>();
+
+        var result = StringUtils.TryPlaceHolderMatching("ID=42;Name=Alice", "id=<Id>;name=<Name>", fills);
+
+        Assert.IsTrue(result);
+        CollectionAssert.AreEqual(
+            new[]
+            {
+                new KeyValuePair<string, string>("<Id>", "42"),
+                new KeyValuePair<string, string>("<Name>", "Alice")
+            },
+            fills);
+    }
+
+    /// <summary>
+    /// Verifies that the matcher tries a later anchor when the first possible split cannot complete the mask.
+    /// </summary>
+    [TestMethod]
+    public void TryPlaceHolderMatchingBacktracksAcrossRepeatedAnchors()
+    {
+        var fills = new List<KeyValuePair<string, string>>();
+
+        var result = StringUtils.TryPlaceHolderMatching("key=one=two;", "<Key>=<Value>;", fills);
+
+        Assert.IsTrue(result);
+        CollectionAssert.AreEqual(
+            new[]
+            {
+                new KeyValuePair<string, string>("<Key>", "key"),
+                new KeyValuePair<string, string>("<Value>", "one=two")
+            },
+            fills);
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="StringUtils.IntoString(string[], IList{string}?, int)"/> creates a new array when no target is supplied.
+    /// </summary>
+    [TestMethod]
+    public void IntoStringWithoutTargetCreatesNewArray()
+    {
+        var source = new[] { "a", "b", "c" };
+
+        var result = source.IntoString();
+
+        CollectionAssert.AreEqual(source, result.ToArray());
+        Assert.AreEqual(source.Length, result.Count);
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="StringUtils.IntoString(string[], IList{string}?, int)"/> copies values into an existing target at the requested offset.
+    /// </summary>
+    [TestMethod]
+    public void IntoStringWithPositiveOffsetUpdatesExistingTarget()
+    {
+        var source = new[] { "a", "b", "c" };
+        IList<string> target = new[] { "x0", "x1", "x2", "x3", "x4" };
+
+        var result = source.IntoString(target, 1);
+
+        Assert.AreSame(target, result);
+        CollectionAssert.AreEqual(new[] { "x0", "a", "b", "c", "x4" }, result.ToArray());
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="StringUtils.IntoString(string[], IList{string}?, int)"/> skips leading source values when a negative offset is used.
+    /// </summary>
+    [TestMethod]
+    public void IntoStringWithNegativeOffsetSkipsLeadingSourceValues()
+    {
+        var source = new[] { "a", "b", "c" };
+        IList<string> target = new[] { "x0", "x1" };
+
+        var result = source.IntoString(target, -1);
+
+        CollectionAssert.AreEqual(new[] { "b", "c" }, result.ToArray());
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="StringUtils.IntoString(string[], IList{string}?, int)"/> ignores values that would exceed the target bounds.
+    /// </summary>
+    [TestMethod]
+    public void IntoStringIgnoresValuesOutsideTargetBounds()
+    {
+        var source = new[] { "a", "b", "c" };
+        IList<string> target = new[] { "x0", "x1", "x2" };
+
+        var result = source.IntoString(target, 2);
+
+        CollectionAssert.AreEqual(new[] { "x0", "x1", "a" }, result.ToArray());
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="StringUtils.IntoString(string[], IList{string}?, int)"/> creates an empty target when the computed size is negative.
+    /// </summary>
+    [TestMethod]
+    public void IntoStringWithNegativeOffsetAndNoTargetCanCreateEmptyArray()
+    {
+        var source = new[] { "a", "b", "c" };
+
+        var result = source.IntoString(null, -5);
+
+        Assert.AreEqual(0, result.Count);
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="StringUtils.ToSecureString(string?)"/> returns <c>null</c> for null and empty input.
+    /// </summary>
+    [TestMethod]
+    [DataRow(null)]
+    [DataRow("")]
+    public void ToSecureStringReturnsNullForNullOrEmptyInput(string? value)
+    {
+        var result = value.ToSecureString();
+
+        Assert.IsNull(result);
+    }
+
+    /// <summary>
+    /// Verifies that <see cref="StringUtils.ToSecureString(string?)"/> copies the original text and marks the result as read-only.
+    /// </summary>
+    [TestMethod]
+    public void ToSecureStringReturnsReadOnlySecureStringWithOriginalContent()
+    {
+        const string value = "Secret123!";
+
+        var result = value.ToSecureString();
+
+        Assert.IsNotNull(result);
+        Assert.AreEqual(value.Length, result.Length);
+        Assert.IsTrue(result.IsReadOnly());
+        Assert.AreEqual(value, new NetworkCredential(string.Empty, result).Password);
     }
 
     private bool testCharset(string arg1, string arg2) => !arg1.StartsWith("<Integer:") || int.TryParse(arg2, out _);
